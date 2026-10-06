@@ -1,0 +1,5 @@
+/.gradle
+/local.properties
+/captured
+/app/*.keystore
+/key.properties
