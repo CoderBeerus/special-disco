@@ -180,6 +180,17 @@ class ShortcutsController extends StateNotifier<AsyncValue<List<WebsiteShortcut>
   }
 }
 
+final bookmarkSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final bookmarkSearchProvider = FutureProvider<List<PageBookmark>>((ref) async {
+  final query = ref.watch(bookmarkSearchQueryProvider);
+  if (query.trim().isEmpty) {
+    return [];
+  }
+  final repo = ref.read(bookmarkRepositoryProvider);
+  return repo.searchBookmarks(query);
+});
+
 final bookmarkGroupsProvider =
     StateNotifierProvider<BookmarkGroupsController, AsyncValue<List<WebsiteBookmarkGroup>>>((ref) {
   return BookmarkGroupsController(ref.read(bookmarkRepositoryProvider));
