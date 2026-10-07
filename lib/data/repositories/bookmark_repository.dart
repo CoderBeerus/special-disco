@@ -221,6 +221,20 @@ class BookmarkRepository {
     return null;
   }
 
+  Future<List<PageBookmark>> searchBookmarks(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    final db = await _database.database;
+    final likeQuery = '%${query.trim()}%';
+    final rows = await db.query(
+      'page_bookmarks',
+      where: 'title LIKE ? OR custom_title LIKE ? OR url LIKE ? OR domain LIKE ? OR notes LIKE ?',
+      whereArgs: [likeQuery, likeQuery, likeQuery, likeQuery, likeQuery],
+      orderBy: 'sort_order ASC, date_added DESC',
+    );
+    return rows.map((row) => _bookmarkFromMap(row)).toList();
+  }
+
   PageBookmark _bookmarkFromMap(Map<String, Object?> map) {
     return PageBookmark(
       id: map['id'] as String,

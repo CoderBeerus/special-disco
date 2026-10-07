@@ -1,10 +1,8 @@
-import 'package:aniweb/data/repositories/bookmark_repository.dart';
-import 'package:aniweb/data/repositories/shortcut_repository.dart';
-import 'package:aniweb/data/models/page_bookmark.dart';
-import 'package:aniweb/data/models/website_bookmark_group.dart';
-import 'package:aniweb/data/models/website_shortcut.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aniweb/data/database/local_database.dart';
 import 'package:aniweb/data/models/app_settings.dart';
@@ -13,9 +11,15 @@ import 'package:aniweb/data/models/media_source.dart';
 import 'package:aniweb/data/repositories/download_repository.dart';
 import 'package:aniweb/services/download/download_manager_service.dart';
 import 'package:aniweb/services/media_detection/media_detection_service.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:aniweb/data/repositories/bookmark_repository.dart';
+import 'package:aniweb/data/repositories/shortcut_repository.dart';
+import 'package:aniweb/data/models/page_bookmark.dart';
+import 'package:aniweb/data/models/website_bookmark_group.dart';
+import 'package:aniweb/data/models/website_shortcut.dart';
+import 'package:aniweb/data/models/browser_history.dart';
+import 'package:aniweb/data/repositories/history_repository.dart';
+import 'package:aniweb/data/models/watch_history.dart';
+import 'package:aniweb/data/repositories/watch_history_repository.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('Initialize sharedPreferencesProvider in main.dart');
@@ -176,6 +180,17 @@ class ShortcutsController extends StateNotifier<AsyncValue<List<WebsiteShortcut>
   }
 }
 
+final bookmarkSearchQueryProvider = StateProvider<String>((ref) => '');
+
+final bookmarkSearchProvider = FutureProvider<List<PageBookmark>>((ref) async {
+  final query = ref.watch(bookmarkSearchQueryProvider);
+  if (query.trim().isEmpty) {
+    return [];
+  }
+  final repo = ref.read(bookmarkRepositoryProvider);
+  return repo.searchBookmarks(query);
+});
+
 final bookmarkGroupsProvider =
     StateNotifierProvider<BookmarkGroupsController, AsyncValue<List<WebsiteBookmarkGroup>>>((ref) {
   return BookmarkGroupsController(ref.read(bookmarkRepositoryProvider));
@@ -219,4 +234,65 @@ class BookmarkGroupsController extends StateNotifier<AsyncValue<List<WebsiteBook
 final bookmarksForGroupProvider = FutureProvider.family<List<PageBookmark>, String>((ref, groupId) async {
   final repo = ref.read(bookmarkRepositoryProvider);
   return repo.getBookmarksForGroup(groupId);
+});
+
+final historyRepositoryProvider = Provider<HistoryRepository>(
+  (ref) => HistoryRepository(LocalDatabase.instance),
+);
+
+final historyProvider =
+    StateNotifierProvider<HistoryController, AsyncValue<List<BrowserHistory>>>((ref) {
+  return HistoryController(ref.read(historyRepositoryProvider));
+});
+
+class HistoryController extends StateNotifier<AsyncValue<List<BrowserHistory>>> {
+  HistoryController(this._repository) : super(const AsyncValue.loading()) {
+    refresh();
+  }
+
+  final HistoryRepository _repository;
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    try {
+      final history = await _repository.getAllHistory();
+      state = AsyncValue.data(history);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> addHistory(String url, String title, {String? favicon}) async {
+    await _repository.addHistory(url, title, favicon: favicon);
+    await refresh();
+  }
+
+  Future<void> deleteHistory(String id) async {
+    await _repository.deleteHistory(id);
+    await refresh();
+  }
+
+  Future<void> clearHistory() async {
+    await _repository.clearHistory();
+    await refresh();
+  }
+
+  Future<void> searchHistory(String query) async {
+    state = const AsyncValue.loading();
+    try {
+      final history = await _repository.searchHistory(query);
+      state = AsyncValue.data(history);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}
+
+final watchHistoryRepositoryProvider = Provider<WatchHistoryRepository>(
+  (ref) => WatchHistoryRepository(LocalDatabase.instance),
+);
+
+final continueWatchingProvider = FutureProvider<List<WatchHistory>>((ref) async {
+  final repo = ref.read(watchHistoryRepositoryProvider);
+  return repo.getContinueWatching();
 });
