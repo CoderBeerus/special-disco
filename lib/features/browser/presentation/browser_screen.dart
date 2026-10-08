@@ -4,6 +4,7 @@ import 'package:aniweb/state/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BrowserScreen extends ConsumerStatefulWidget {
@@ -20,6 +21,7 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
   InAppWebViewController? _webViewController;
   late final ContentBlockingService _blockingService;
   bool _isLoading = true;
+  String? _lastRecordedUrl;
 
   @override
   void initState() {
@@ -66,6 +68,12 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              context.push('/browser/history');
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.bookmark_add_outlined),
             onPressed: () async {
@@ -129,7 +137,21 @@ class _BrowserScreenState extends ConsumerState<BrowserScreen> {
               if (uri != null) _urlController.text = uri.toString();
               setState(() => _isLoading = true);
             },
-            onLoadStop: (_, __) => setState(() => _isLoading = false),
+            onLoadStop: (controller, uri) async {
+              setState(() => _isLoading = false);
+              if (uri == null) return;
+              final urlStr = uri.toString();
+              if (urlStr.isEmpty || urlStr == 'about:blank' || (!urlStr.startsWith('http://') && !urlStr.startsWith('https://'))) return;
+              if (_lastRecordedUrl == urlStr) return;
+
+              _lastRecordedUrl = urlStr;
+              final title = await controller.getTitle() ?? uri.host;
+              final favicons = await controller.getFavicons();
+              final favicon = favicons.isNotEmpty ? favicons.first.url.toString() : null;
+
+              final historyCtrl = ref.read(historyProvider.notifier);
+              historyCtrl.addHistory(urlStr, title, favicon: favicon);
+            },
             onDownloadStartRequest: (_, req) {
               final media = ref.read(mediaDetectionServiceProvider).detect(
                     resourceUrl: req.url.toString(),

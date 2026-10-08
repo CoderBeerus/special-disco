@@ -50,4 +50,27 @@ void main() {
     final all = await repository.getAllHistory();
     expect(all.isEmpty, true);
   });
+
+  test('search by title, url, domain case-insensitive', () async {
+    await repository.addHistory('https://dart.dev', 'Dart programming language');
+    await repository.addHistory('https://flutter.dev', 'Flutter UI toolkit');
+
+    // Title search
+    final tSearch = await repository.searchHistory('PROGRAMMING');
+    expect(tSearch.length, 1);
+    expect(tSearch.first.title, 'Dart programming language');
+
+    // URL/domain search
+    final uSearch = await repository.searchHistory('Flutter.dev');
+    expect(uSearch.length, 1);
+    expect(uSearch.first.title, 'Flutter UI toolkit');
+
+    // No result search
+    final noSearch = await repository.searchHistory('nonexistent');
+    expect(noSearch.isEmpty, true);
+
+    // Empty search should return empty or all (handled by provider typically, but repo might return all depending on LIKE %%)
+    final emptySearch = await repository.searchHistory('');
+    expect(emptySearch.length, 2);
+  });
 }
