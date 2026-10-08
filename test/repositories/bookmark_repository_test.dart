@@ -75,4 +75,69 @@ void main() {
     final bookmarksAfter = await dbInstance.query('page_bookmarks');
     expect(bookmarksAfter.length, 0, reason: 'Bookmarks should be cascade deleted');
   });
+
+  group('searchBookmarks', () {
+    setUp(() async {
+      final database = await db.database;
+      await database.delete('page_bookmarks');
+      await database.delete('website_bookmark_groups');
+
+      await repo.addBookmarkWithAutoGroup(
+        title: 'Flutter Dev',
+        url: 'https://flutter.dev/docs',
+        domain: 'flutter.dev',
+      );
+      final b2 = await repo.addBookmarkWithAutoGroup(
+        title: 'Dart Dev',
+        url: 'https://dart.dev',
+        domain: 'dart.dev',
+      );
+      // Update b2 with custom title and notes
+      final updatedB2 = b2.copyWith(customTitle: 'Dart Lang', notes: 'Important info here');
+      await repo.updateBookmark(updatedB2);
+    });
+
+    test('match title', () async {
+      final results = await repo.searchBookmarks('Flutter');
+      expect(results.length, 1);
+      expect(results.first.title, 'Flutter Dev');
+    });
+
+    test('match custom title', () async {
+      final results = await repo.searchBookmarks('Lang');
+      expect(results.length, 1);
+      expect(results.first.customTitle, 'Dart Lang');
+    });
+
+    test('match url', () async {
+      final results = await repo.searchBookmarks('flutter.dev/docs');
+      expect(results.length, 1);
+      expect(results.first.url, 'https://flutter.dev/docs');
+    });
+
+    test('match domain', () async {
+      final results = await repo.searchBookmarks('dart.dev');
+      expect(results.length, 1);
+      expect(results.first.domain, 'dart.dev');
+    });
+
+    test('match notes', () async {
+      final results = await repo.searchBookmarks('Important');
+      expect(results.length, 1);
+      expect(results.first.notes, 'Important info here');
+    });
+
+    test('case-insensitive search', () async {
+      final results = await repo.searchBookmarks('fLuTtEr');
+      expect(results.length, 1);
+      expect(results.first.title, 'Flutter Dev');
+    });
+
+    test('no-result search or empty query', () async {
+      final emptyResults = await repo.searchBookmarks('');
+      expect(emptyResults.isEmpty, true);
+      final noResults = await repo.searchBookmarks('nonexistent');
+      expect(noResults.isEmpty, true);
+    });
+  });
 }

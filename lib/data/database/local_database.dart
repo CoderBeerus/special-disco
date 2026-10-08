@@ -24,14 +24,22 @@ class LocalDatabase {
 
     _db = await openDatabase(
       dbPath,
-      version: 2,
+      version: 4,
       onCreate: (db, version) async {
         await _createV1(db);
         await _createV2(db);
+        await _createV3(db);
+        await _createV4(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _createV2(db);
+        }
+        if (oldVersion < 3) {
+          await _createV3(db);
+        }
+        if (oldVersion < 4) {
+          await _createV4(db);
         }
       },
     );
@@ -95,6 +103,33 @@ class LocalDatabase {
         notes TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (group_id) REFERENCES website_bookmark_groups (id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  Future<void> _createV3(Database db) async {
+    await db.execute('''
+      CREATE TABLE browser_history (
+        id TEXT PRIMARY KEY,
+        url TEXT NOT NULL,
+        title TEXT NOT NULL,
+        favicon TEXT,
+        timestamp TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _createV4(Database db) async {
+    await db.execute('''
+      CREATE TABLE watch_history (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        url TEXT NOT NULL UNIQUE,
+        thumbnail TEXT,
+        position_ms INTEGER NOT NULL,
+        duration_ms INTEGER NOT NULL,
+        last_played TEXT NOT NULL,
+        is_completed INTEGER NOT NULL DEFAULT 0
       )
     ''');
   }

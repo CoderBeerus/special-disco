@@ -3,6 +3,7 @@ import 'package:aniweb/features/bookmarks/presentation/bookmarks_screen.dart';
 import 'package:aniweb/features/browser/presentation/browser_screen.dart';
 import 'package:aniweb/features/downloads/presentation/downloads_screen.dart';
 import 'package:aniweb/features/gallery/presentation/gallery_screen.dart';
+import 'package:aniweb/features/history/presentation/browser_history_screen.dart';
 import 'package:aniweb/features/home/presentation/home_screen.dart';
 import 'package:aniweb/features/settings/presentation/settings_screen.dart';
 import 'package:aniweb/features/shell/presentation/navigation_shell.dart';
@@ -32,6 +33,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   final url = state.uri.queryParameters['url'];
                   return BrowserScreen(initialUrl: url);
                 },
+                routes: [
+                  GoRoute(
+                    path: 'history',
+                    builder: (context, state) => const BrowserHistoryScreen(),
+                  ),
+                ],
               ),
             ],
           ),
